@@ -1,0 +1,38 @@
+# dataset.py
+
+import os
+import pandas as pd
+from PIL import Image
+from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+
+
+class ISICDataset(Dataset):
+    def __init__(self, images_dir, labels_csv, transform=None, task="melanoma"):
+        self.images_dir = images_dir
+        self.df = pd.read_csv(labels_csv, header=None)
+        self.transform = transform
+        self.task = task
+        
+        self.df.columns = ['image_id', 'melanoma_label', 'keratosis_label']
+
+        if task == "melanoma":
+            self.df["label"] = self.df["melanoma_label"]
+        elif task == "keratosis":
+            self.df["label"] = self.df["keratosis_label"]
+        else:
+            raise ValueError("Invalid task: choose 'melanoma' or 'keratosis'")
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        image_id = self.df.iloc[idx]["image_id"]
+        img_path = os.path.join(self.images_dir, f"{image_id}.jpg")
+        image = Image.open(img_path).convert("RGB")
+        
+        label = int(self.df.iloc[idx]["label"])
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
